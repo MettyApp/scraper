@@ -1,0 +1,12 @@
+{
+    "ignore_if_empty_categories": true,
+    "ignore": [],
+    "categories": [
+        ["equipment", ["Accessoires", "Machines à café", "PRO Machines" ]],
+        ["subscription", ["Abonnements", "Abonnement cafés BIO"]],
+        ["training", ["Ateliers Caféologie"]],
+        ["tea", ["Thé et infusions"]],
+        ["capsules", ["Café capsules"]],
+        ["roasted-beans", ["Nos cafés","Café en Grain SPECIALTY COFFEE", "Cafés Filtre", "Cafés pour espresso"]]
+    ]
+}

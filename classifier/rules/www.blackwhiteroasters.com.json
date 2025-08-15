@@ -1,0 +1,34 @@
+{
+  "ignore_if_empty_categories": true,
+  "ignore": ["The Coffee Archive", "Black Label Archive"],
+  "categories": [
+    [
+      "merch",
+      ["Merchandise", "Apparel"]
+    ],
+    [
+      "equipment",
+      ["B&W Cafe Supplies", "Brewing Equipment", "Merchandise and Cafe Supplies"]
+    ],
+    [
+      "subscription",
+      ["Subscriptions"]
+    ],
+    [
+      "training",
+      []
+    ],
+    [
+      "tea",
+      []
+    ],
+    [
+      "chocolate",
+      []
+    ],
+    [
+      "roasted-beans",
+      ["Wholesale Coffee", "Coffee", "B&W Freezer Collection", "B&W Freezer Collection - USBC Edition", "Thermal Shock Processing"]
+    ]
+  ]
+}

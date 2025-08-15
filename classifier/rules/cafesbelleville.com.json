@@ -1,0 +1,34 @@
+{
+  "ignore_if_empty_categories": true,
+  "ignore": [],
+  "categories": [
+    [
+      "merch",
+      []
+    ],
+    [
+      "equipment",
+      ["Matériel", "Cafetières Filtre", "Accessoires"]
+    ],
+    [
+      "subscription",
+      ["Abonnement"]
+    ],
+    [
+      "training",
+      ["EXPÉRIENCES"]
+    ],
+    [
+      "tea",
+      []
+    ],
+    [
+      "chocolate",
+      []
+    ],
+    [
+      "roasted-beans",
+      ["Cafés"]
+    ]
+  ]
+}

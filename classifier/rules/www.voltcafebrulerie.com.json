@@ -1,0 +1,34 @@
+{
+  "ignore_if_empty_categories": true,
+  "ignore": [],
+  "categories": [
+    [
+      "merch",
+      ["VOLT MERCH"]
+    ],
+    [
+      "equipment",
+      ["MATERIEL"]
+    ],
+    [
+      "subscription",
+      ["ABONNEMENT"]
+    ],
+    [
+      "training",
+      ["ATELIERS & FORMATIONS"]
+    ],
+    [
+      "tea",
+      []
+    ],
+    [
+      "chocolate",
+      []
+    ],
+    [
+      "roasted-beans",
+      ["NOS CAFÉS"]
+    ]
+  ]
+}

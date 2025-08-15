@@ -1,0 +1,13 @@
+.env.yaml
+.scrapy
+.venv
+__pycache__
+items.json
+*.pkl
+.pytest_cache
+.ruff_cache
+data/
+.aws-sam
+roasters.json
+*.ipynb
+models/model-last

@@ -1,0 +1,499 @@
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Architectures:
+      - arm64
+    Tracing: Active
+    CodeUri: ./
+Parameters:
+  GitShortHash:
+    Type: String
+    Default: _snapshot
+  MistralAPIKey:
+    Type: String
+  GoogleClientID:
+    Type: String
+Resources:
+  DomainsToCrawlSQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt: CrawlingFailures.Arn
+        maxReceiveCount: 1
+      VisibilityTimeout: 600
+
+  NewURLsSQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt: CreationFailures.Arn
+        maxReceiveCount: 1
+      VisibilityTimeout: 140
+  DeletedURLsSQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      RedrivePolicy:
+        deadLetterTargetArn:
+          Fn::GetAtt: DeletionFailures.Arn
+        maxReceiveCount: 3
+
+
+  AllowS3EventPolicy: 
+    Type: AWS::SQS::QueuePolicy
+    Properties: 
+      Queues: 
+        - Ref: NewURLsSQSQueue
+      PolicyDocument: 
+        Statement: 
+          - Action: 
+              - "SQS:SendMessage" 
+            Effect: "Allow"
+            Resource:
+              - Fn::GetAtt: NewURLsSQSQueue.Arn
+            Principal:  
+              Service:  "s3.amazonaws.com"
+            Condition:
+              StringEquals:
+                "aws:SourceAccount":
+                      Ref: AWS::AccountId
+
+  CrawlingFailures:
+    Type: AWS::SQS::Queue
+  ParsingFailures:
+    Type: AWS::SQS::Queue
+  CreationFailures:
+    Type: AWS::SQS::Queue
+  DeletionFailures:
+    Type: AWS::SQS::Queue
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+              - HEAD
+              - DELETE
+              - PUT
+            AllowedOrigins:
+              - '*'
+            ExposedHeaders:
+              - Date
+              - x-amz-meta-fugue-seen-url-count
+              - x-amz-meta-fugue-crawled-url-count
+              - x-amz-meta-fugue-id-generation
+              - x-amz-meta-fugue-parsed-category
+              - x-amz-meta-fugue-parsed-date
+              - x-amz-meta-fugue-parsed-name
+              - x-amz-meta-fugue-parsed-photo
+              - x-amz-meta-fugue-parsed-url
+              - x-amz-meta-fugue-session-id
+              - x-amz-meta-fugue-label-name
+              - x-amz-meta-fugue-label-category
+              - x-amz-meta-fugue-label-kind
+              - x-amz-meta-fugue-predicted-countries
+              - x-amz-meta-fugue-predicted-lang
+              - content-type
+            Id: myCORSRuleId1
+            MaxAge: 3600
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: s3:ObjectCreated:*
+            Queue:
+              Fn::GetAtt: NewURLsSQSQueue.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: "prefix"
+                    Value: "parsed/v3/"
+                  - Name: "suffix"
+                    Value: ".json.gz"
+
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  DynamoDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: crawler-state
+      BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: _ttl
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+      AttributeDefinitions:
+        - AttributeName: "pk"
+          AttributeType: "S"
+        - AttributeName: "sessionState"
+          AttributeType: "S"
+        - AttributeName: "sessionDate"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "pk"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: "allSessions"
+          KeySchema:
+            - AttributeName: "sessionState"
+              KeyType: "HASH"
+            - AttributeName: "sessionDate"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "INCLUDE"
+            NonKeyAttributes:
+              - crawlingSessionId
+              - sessionState
+              - sessionItemScraped
+              - crawlingSessionDomains
+              - crawlingSessionDownloadedBytes
+              - crawlingSessionRequests
+              - crawlingSessionErrors
+              - sessionIterationCount
+              - sessionDurationTime
+              - sessionSpiders
+              - sessionSpiderVersion
+
+  DynamoExportsDBTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: exports-state
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE
+      AttributeDefinitions:
+        - AttributeName: "pk"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "pk"
+          KeyType: "HASH"
+
+  SharedLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: lambda/layers/shared
+      CompatibleRuntimes:
+        - python3.12
+      CompatibleArchitectures:
+        - arm64
+    Metadata:
+      BuildMethod: python3.12
+      BuildArchitecture: arm64
+
+  ScraperFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Scraper}
+      RetentionInDays: 3
+
+  Scraper:
+    Type: AWS::Serverless::Function
+    Metadata:
+      Dockerfile: Dockerfile
+      DockerContext: "."
+      DockerTag: v1
+    Properties:
+      Timeout: 200
+      PackageType: Image
+      MemorySize: 1024
+      # LoggingConfig:
+        # ApplicationLogLevel: INFO
+        # SystemLogLevel: WARN
+        # LogFormat: Text
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoDBTable
+        - S3CrudPolicy:
+            BucketName: !Ref S3Bucket
+        - SQSSendMessagePolicy:
+            QueueName:
+              Fn::GetAtt: DomainsToCrawlSQSQueue.QueueName
+      Events:
+        SQS:
+          Type: SQS
+          Properties:
+            Enabled: true
+            Queue: !GetAtt DomainsToCrawlSQSQueue.Arn
+            BatchSize: 1
+      Environment:
+        Variables:
+          DATA_ROOT_DIR: '/tmp/'
+          DDB_STATE_TABLE:
+            Ref: DynamoDBTable
+          PAGE_S3_BUCKET:
+            Ref: S3Bucket
+          QUEUE_URL:
+            Ref: DomainsToCrawlSQSQueue
+          PRODUCT_MODEL_PATH: "/var/task/models/model-best/"
+          GIT_SHORT_HASH:
+            Ref: GitShortHash
+  LLMExtractorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda.functions.llm.lambda_handler
+      Timeout: 30
+      MemorySize: 128
+      Runtime: python3.12
+      Policies:
+        - S3ReadPolicy:
+            BucketName: 'fugue-crawler-s3bucket-wfpbhlliaf63'
+      Layers:
+        - Ref: SharedLayer
+      Environment:
+        Variables:
+          DATA_ROOT_DIR: '/tmp/'
+          PAGE_S3_BUCKET: 'fugue-crawler-s3bucket-wfpbhlliaf63'
+          MISTRAL_API_KEY:
+            Ref: MistralAPIKey
+
+  URLExporterFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${URLExporterFunction}
+      RetentionInDays: 3
+
+  URLExporterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda.functions.exporter.lambda_handler
+      Timeout: 30
+      MemorySize: 128
+      Runtime: python3.12
+      Layers:
+        - Ref: SharedLayer
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref DynamoExportsDBTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref DynamoExportsDBTable
+        - S3ReadPolicy:
+            BucketName: 'fugue-crawler-s3bucket-wfpbhlliaf63'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - appsync:GraphQL
+              Resource: 
+                - Fn::Sub: "arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/nycs4jqh2narnk32lw5umpubsa/*"
+                - Fn::Sub: "arn:aws:appsync:${AWS::Region}:${AWS::AccountId}:apis/nycs4jqh2narnk32lw5umpubsa"
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt: NewURLsSQSQueue.Arn
+            BatchSize: 1
+            Enabled: true
+      Environment:
+        Variables:
+          DATA_ROOT_DIR: '/tmp/'
+          STATE_DDB:
+            Ref: DynamoExportsDBTable
+          PAGE_S3_BUCKET: 'fugue-crawler-s3bucket-wfpbhlliaf63' #https://github.com/aws/aws-sam-cli/issues/2534
+          MISTRAL_API_KEY:
+            Ref: MistralAPIKey
+
+
+  DomainListerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${DomainLister}
+      RetentionInDays: 3
+
+  DomainLister:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: lambda.functions.domain_lister.lambda_handler
+      Timeout: 10
+      Runtime: python3.12
+      Layers:
+        - Ref: SharedLayer
+      Environment:
+        Variables:
+          DATA_ROOT_DIR: '/tmp/'
+
+  CognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      AllowUnauthenticatedIdentities: false
+      SupportedLoginProviders:
+        accounts.google.com: 
+          Ref: GoogleClientID
+
+  CognitoAdminIdentityPoolRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                'cognito-identity.amazonaws.com:aud': !Ref CognitoIdentityPool
+              ForAnyValue:StringLike:
+                 "cognito-identity.amazonaws.com:amr": "authenticated"
+      Policies:
+        - PolicyName: dashboard
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'dynamodb:query'
+                Resource:
+                  - Fn::Sub: ${DynamoDBTable.Arn}/index/allSessions
+                  # - Fn::Sub: ${URLStoreDBTable.Arn}/index/byPKAndProductCategory
+              - Effect: Allow
+                Action:
+                  - 'dynamodb:getitem'
+                  - 'dynamodb:deleteitem'
+                Resource:
+                  - Fn::Sub: ${DynamoDBTable.Arn}
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/fugue-beans-BeansDynamoDBTable-VDR3V6JZ6CO6
+              - Effect: Allow
+                Action: 'dynamodb:updateitem'
+                Resource:
+                  - Fn::Sub: arn:aws:dynamodb:eu-west-1:${AWS::AccountId}:table/fugue-beans-BeansDynamoDBTable-VDR3V6JZ6CO6
+              - Effect: Allow
+                Action: 'sqs:SendMessage'
+                Resource:
+                  - Fn::GetAtt: DomainsToCrawlSQSQueue.Arn
+                  - Fn::GetAtt: NewURLsSQSQueue.Arn
+                  - Fn::GetAtt: DeletedURLsSQSQueue.Arn
+              - Effect: Allow
+                Action:
+                  - 'scheduler:*'
+                  # - ce:GetCostAndUsage #trop cher omg
+                Resource: '*'
+              - Effect: Allow
+                Action: 'iam:PassRole'
+                Resource:
+                  Fn::GetAtt: EventBridgeSchedulerRole.Arn
+              - Effect: Allow
+                Action: 's3:ListBucket'
+                Resource:
+                  Fn::GetAtt: S3Bucket.Arn
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:GetObjectTagging'
+                  - 's3:GetObjectAcl'
+                  - 's3:DeleteObject'
+                Resource:
+                  - Fn::Sub: "${S3Bucket.Arn}/labels/v1/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/crawled/v1/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/crawled/v2/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/crawled/v3/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/domains/v1/*" 
+                  - Fn::Sub: "${S3Bucket.Arn}/domains/v2/*" 
+                  - Fn::Sub: "${S3Bucket.Arn}/parsed/v2/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/exports/v1/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/bodies/v1/*"
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:DeleteObject'
+                Resource:
+                  - Fn::Sub: "${S3Bucket.Arn}/parsed/v2/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/domains/v1/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/labels/v1/*"
+              - Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:PutObjectTagging'
+                  - 's3:PutObjectAcl'
+                Resource:
+                  - Fn::Sub: "${S3Bucket.Arn}/labels/v1/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/exports/v1/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/crawled/v2/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/crawled/v3/*"
+                  - Fn::Sub: "${S3Bucket.Arn}/domains/v2/*"
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                Resource:
+                  - Fn::GetAtt: DomainLister.Arn
+                  - Fn::GetAtt: LLMExtractorFunction.Arn
+  CognitoAuthenticatedIdentityPoolRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                'cognito-identity.amazonaws.com:aud': !Ref CognitoIdentityPool
+              ForAnyValue:StringLike:
+                 "cognito-identity.amazonaws.com:amr": "authenticated"
+
+  CognitoGuestIdentityPoolRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: cognito-identity.amazonaws.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                'cognito-identity.amazonaws.com:aud': !Ref CognitoIdentityPool
+              ForAnyValue:StringLike:
+                 "cognito-identity.amazonaws.com:amr": "unauthenticated"
+
+  CognitoIdentityPoolRoleAttachment:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref CognitoIdentityPool
+      Roles:
+        "authenticated": !GetAtt CognitoAuthenticatedIdentityPoolRole.Arn 
+        "unauthenticated": !GetAtt CognitoGuestIdentityPoolRole.Arn 
+      RoleMappings:
+        "accounts.google.com":
+          Type: Rules
+          IdentityProvider: accounts.google.com
+          AmbiguousRoleResolution: Deny
+          RulesConfiguration:
+            Rules:
+              - Claim: "hd"
+                MatchType: "Equals"
+                Value: "bonachera.fr"
+                RoleARN:
+                  Fn::GetAtt: CognitoAdminIdentityPoolRole.Arn
+
+  EventBridgeSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: sendMessage
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "sqs:SendMessage"
+                Resource:
+                  - Fn::GetAtt: DomainsToCrawlSQSQueue.Arn

@@ -1,0 +1,38 @@
+{
+  "ignore_if_empty_categories": true,
+  "ignore": [],
+  "categories": [
+    [
+      "merch",
+      ["Disposable Cups"]
+    ],
+    [
+      "equipment",
+      ["Matériels"]
+    ],
+    [
+      "subscription",
+      []
+    ],
+    [
+      "training",
+      []
+    ],
+    [
+      "tea",
+      []
+    ],
+    [
+      "chocolate",
+      []
+    ],
+    [
+      "capsules",
+      ["Capsules", "Coffee Pods & Capsules"]
+    ],
+    [
+      "roasted-beans",
+      ["Café en grain", "Coffee Beans & Ground Coffee"]
+    ]
+  ]
+}

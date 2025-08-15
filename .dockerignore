@@ -1,0 +1,17 @@
+.aws-sam
+.scrapy
+.scrapy/**/*
+__pycache__
+.pytest_cache
+.ruff_cache
+.venv
+.git
+data
+data/**/*
+items.json
+*.ipynb
+template.yaml
+mise.toml
+Dockerfile
+models/model-last
+items.json

@@ -1,0 +1,14 @@
+{
+  "labels":[
+    "roasted-beans",
+    "tea",
+    "training",
+    "merch",
+    "subscription",
+    "equipment",
+    "chocolate",
+    "capsules"
+  ],
+  "threshold":0.0,
+  "positive_label":null
+}

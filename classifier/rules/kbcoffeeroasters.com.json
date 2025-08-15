@@ -1,0 +1,30 @@
+{
+  "ignore_if_empty_categories": true,
+  "ignore": [],
+  "categories": [
+    [
+      "merch",
+      ["Merch", "LivreS"]
+    ],
+    [
+      "equipment",
+      ["Matériels"]
+    ],
+    [
+      "subscription",
+      []
+    ],
+    [
+      "training",
+      []
+    ],
+    [
+      "tea",
+      []
+    ],
+    [
+      "roasted-beans",
+      ["Retail Bags"]
+    ]
+  ]
+}

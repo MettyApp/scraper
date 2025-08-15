@@ -1,0 +1,35 @@
+{
+  "ignore_if_empty_categories": true,
+  "ignore": [],
+  "categories": [
+    [
+      "equipment",
+      ["Machines & Accessoires"]
+    ],
+    [
+      "subscription",
+      []
+    ],
+    [
+      "training",
+      []
+    ],
+    [
+      "merch",
+      ["Céramique \"L'Instant Argile\""]
+    ],
+    [
+      "tea",
+      ["Nos thés \"Goutte de Thé\""]
+    ],
+
+    [
+      "chocolate",
+      ["Nos chocolats Diggers"]
+    ],
+    [
+      "roasted-beans",
+      ["Nos cafés"]
+    ]
+  ]
+}

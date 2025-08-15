@@ -1,0 +1,64 @@
+[tools]
+python = "3.12"
+uv = "0.8.6"
+aws-sam-cli = "1"
+aws = "2"
+
+[env]
+_.file = ".env.yaml"
+
+[tasks.lint]
+description = "Run lint checks"
+run = [
+    "uv run ruff format .",
+    "uv run ruff check --fix .",
+]
+
+[tasks.train]
+description = "Train classifier"
+run = [
+    "uv run python -m classifier.prepare_data",
+    "uv run python -m spacy init fill-config ./spacy_base_config.cfg ./spacy.cfg",
+    "uv run python -m spacy train spacy.cfg --output ./models --paths.train ./data/train.spacy --paths.dev ./data/dev.spacy",
+]
+
+
+[tasks.test]
+description = "Run tests"
+run = [
+    "uv run pytest",
+]
+wait_for = ["lint", "validate"]
+
+[tasks.validate]
+description = "Validate the stack in a CI context"
+run = [
+    "uv run ruff format --check .",
+    "uv run ruff check .",
+]
+
+[tasks.build]
+description = "Build the code package"
+run = [
+    "uv export --no-annotate --no-dev --no-header  --format requirements.txt > lambda/layers/shared/requirements.txt",
+    "sam build -u",
+    "./scripts/cleanup_layer.sh"
+]
+depends = ["lint"]
+
+[tasks.ci]
+description = "Build the code package"
+run = [
+    "uv export --no-annotate --no-dev --no-header  --format requirements.txt > lambda/layers/shared/requirements.txt",
+    "sam build",
+    "./scripts/cleanup_layer.sh"
+]
+depends = ["lint"]
+
+
+[tasks.deploy]
+description = "Deploy"
+run = [
+    "sam deploy --parameter-overrides ParameterKey=GitShortHash,ParameterValue=$(git rev-parse --short=8 HEAD) ParameterKey=MistralAPIKey,ParameterValue=$MISTRAL_API_KEY ParameterKey=GoogleClientID,ParameterValue=$GOOGLE_CLIENT_ID"
+]
+depends = ["build"]

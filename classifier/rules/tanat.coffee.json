@@ -1,0 +1,34 @@
+{
+  "ignore_if_empty_categories": true,
+  "ignore": [],
+  "categories": [
+    [
+      "merch",
+      ["livres"]
+    ],
+    [
+      "equipment",
+      ["equipement", "accessoires-filtre", "balances", "tampers-autres", "moulins-electriques", "filtres-a-cafe-v60"]
+    ],
+    [
+      "subscription",
+      []
+    ],
+    [
+      "training",
+      []
+    ],
+    [
+      "tea",
+      ["thes"]
+    ],
+    [
+      "chocolate",
+      []
+    ],
+    [
+      "roasted-beans",
+      ["cafes"]
+    ]
+  ]
+}

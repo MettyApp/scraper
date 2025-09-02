@@ -180,11 +180,16 @@ def create_bean(export_rule, parsed, s3Url, session_id):
 
 def s3_file_handler(s3_url):
     session_id = s3_url.split("/")[-2]
+    cached_rules = {}
     for item in download_gz_content(s3_url):
         prediction = item.get("predicted_category")
         if prediction == "roasted-beans":
             try:
-                export_rule = download_content(f"exports/v1/{item['host']}.json")
+                if item["host"] not in cached_rules:
+                    cached_rules[item["host"]] = download_content(
+                        f"exports/v1/{item['host']}.json"
+                    )
+                export_rule = cached_rules[item["host"]]
                 if not export_rule["active"]:
                     continue
                 try:

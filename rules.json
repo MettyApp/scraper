@@ -10,5 +10,8 @@
     },
     "shop.cafes-celtik.fr": {
         "ignore_sitemap": true
+    },
+    "www.terresdecafe.com": {
+        "ignore_sitemap": true
     }
 }

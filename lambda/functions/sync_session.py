@@ -112,7 +112,8 @@ class FugueSync:
                         "sessionState = :state",
                         "ADD",
                         ",".join(
-                            [
+                            e
+                            for e in [
                                 "sessionIterationCount :one",
                                 "sessionDurationTime :elapsed",
                                 "sessionItemScraped :sessionItemScraped",
@@ -126,9 +127,10 @@ class FugueSync:
                                 if len(self.backends) > 0
                                 else "",
                             ]
+                            if len(e) > 0
                         ),
                     ]
-                    if elt is not None
+                    if elt is not None and len(elt) > 0
                 ),
                 ExpressionAttributeValues={
                     k: v
@@ -142,7 +144,7 @@ class FugueSync:
                         ":elapsed": {"N": str(elapsed_time)},
                         ":sessionItemScraped": {"N": str(len(self.items))},
                         ":sessionItemScrapedDetailed": {
-                            "SS": list(json.dumps(e) for e in self.items)
+                            "SS": list(set(json.dumps(e) for e in self.items))
                         }
                         if len(self.items) > 0
                         else None,

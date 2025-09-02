@@ -122,7 +122,9 @@ class FugueSync:
                                 "sessionItemScrapedDetailed :sessionItemScrapedDetailed"
                                 if len(self.items) > 0
                                 else "",
-                                "sessionBackends :sessionBackends",
+                                "sessionBackends :sessionBackends"
+                                if len(self.backends) > 0
+                                else "",
                             ]
                         ),
                     ]
@@ -144,7 +146,9 @@ class FugueSync:
                         }
                         if len(self.items) > 0
                         else None,
-                        ":sessionBackends": {"SS": list(self.backends)},
+                        ":sessionBackends": {"SS": list(self.backends)}
+                        if len(self.backends) > 0
+                        else None,
                         ":crawlingSessionDownloadedBytes": {
                             "N": str(self.downloaded_bytes)
                         },

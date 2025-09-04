@@ -89,7 +89,7 @@ import_bean = gql("""
 
 client = Client(transport=transport, fetch_schema_from_transport=False)
 dynamodb = boto3.client("dynamodb")
-
+logging.basicConfig(level=os.getenv("LOG_LEVEL", logging.WARNING))
 
 class DownloadedPageNotFound(Exception):
     pass
@@ -109,24 +109,24 @@ def download_gz_content(url_str):
         logging.error(f"invalid url received: {url}")
         raise InvalidBucketException()
     key = url.path.removeprefix("/")
-    print("downloading from S3", key)
+    logging.info(f"downloading from S3 {key}")
     try:
         resp = s3_client.get_object(Bucket=os.environ["PAGE_S3_BUCKET"], Key=key)
         with gzip.GzipFile(fileobj=resp["Body"]) as gz:
             for line in gz:
                 yield json.loads(line)
     except Exception as err:
-        print("failed to download", key, ":", err)
+        logging.error(f"failed to download {key}: {err}")
         raise DownloadedPageNotFound()
 
 
 def download_content(object_key):
-    print("downloading from S3", object_key)
+    logging.info(f"downloading from S3 {object_key}")
     try:
         resp = s3_client.get_object(Bucket=os.environ["PAGE_S3_BUCKET"], Key=object_key)
         return json.load(resp["Body"])
     except Exception as err:
-        print("failed to download", object_key, ":", err)
+        logging.error(f"failed to download {object_key}: {err}")
         raise DownloadedPageNotFound()
 
 
@@ -143,9 +143,14 @@ def create_bean(export_rule, parsed, s3Url, session_id):
     try:
         content = b64_decode(encoded)
         if content is not None:
-            llm_parsed = validate(
-                llm.parse(parsed.get("product_url"), content)[0]
-            )
+            resp = llm.parse(parsed.get("product_url"), content)
+            if len(resp) > 0:
+                llm_parsed = validate(
+                    resp[0]
+                )
+            else:
+                logging.error(f"no llm parsed found for {parsed.get('title')} from session {session_id}")
+                raise LLMFailedException()
     except Exception as err:
         logging.error(f"llm parsing failed: {err}")
         raise LLMFailedException()
@@ -180,7 +185,7 @@ def create_bean(export_rule, parsed, s3Url, session_id):
             "exportedId": {"S": created_id},
         },
     )
-    # print("exported bean", json.dumps(out))
+    logging.info(f"exported bean {parsed.get('title')} from session {session_id}")
 
 
 def s3_file_handler(s3_url):
@@ -223,5 +228,5 @@ def lambda_handler(event, context):
 
 if __name__ == "__main__":
     s3_file_handler(
-        "s3://fugue-crawler-s3bucket-wfpbhlliaf63/parsed/v3/01K4A1JACM7KBBRQ4J7NCGN158/2025-09-04T09-40-35.839289+00-00-00001.json.gz"
+        "s3://fugue-crawler-s3bucket-wfpbhlliaf63/parsed/v3/01K4A6XHH6ZDQRW6BPFBEXPPQ0/2025-09-04T11-14-11.575826+00-00-00001.json.gz"
     )

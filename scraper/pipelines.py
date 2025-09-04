@@ -12,7 +12,7 @@ def md5(*values):
 
 class EnrichItem:
     model = ProductClassifier()
-    run_predictions = os.getenv("LAMBDA_TASK_ROOT") is not None
+    run_predictions = os.getenv("DISABLE_PREDICTIONS") is None
 
     def validate_list(self, item, key):
         if key not in item:

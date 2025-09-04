@@ -10,6 +10,8 @@ def b64(value):
 
 
 def shrink_html(html):
+    if not html or len(html) == 0:
+        return ''
     soup = BeautifulSoup(html, "lxml")
     for tag in soup.find_all(
         [

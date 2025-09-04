@@ -242,7 +242,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: lambda.functions.llm.lambda_handler
-      Timeout: 30
+      Timeout: 180
       MemorySize: 128
       Runtime: python3.12
       Policies:

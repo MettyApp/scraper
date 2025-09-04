@@ -40,7 +40,7 @@ class PrestaShopScraper:
                 + ":"
                 + response.css("#product_page_product_id::attr(value)").get(),
                 "product_url": data.get("link"),
-                "product_image": response.css(".product-cover img::attr(src)").get()
+                "image_url": response.css(".product-cover img::attr(src)").get()
                 or response.css(".product-covers img::attr(src)").get(),
                 "backend": "prestashop1.7",
                 "title": data.get("name"),
@@ -101,7 +101,7 @@ class PrestaShopScraper:
                 + ":"
                 + response.css("#product_page_product_id::attr(value)").get(),
                 "product_url": response.url,
-                "product_image": response.css(".product-cover img::attr(src)").get(),
+                "image_url": response.css(".product-cover img::attr(src)").get(),
                 "backend": "prestashop1.6",
                 "options": [],
                 "title": name,

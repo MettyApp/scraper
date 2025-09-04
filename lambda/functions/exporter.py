@@ -136,11 +136,16 @@ def b64_decode(encoded_value):
 
 def create_bean(export_rule, parsed, s3Url, session_id):
     llm_parsed = None
+    encoded = parsed.get("content")
+    if encoded is None:
+        raise Exception(f"no content found")
     logging.info(f"will import {parsed.get('title')} from session {session_id}")
     try:
-        llm_parsed = validate(
-            llm.parse(parsed.get("product_url"), b64_decode(parsed.get("content")))[0]
-        )
+        content = b64_decode(encoded)
+        if content is not None:
+            llm_parsed = validate(
+                llm.parse(parsed.get("product_url"), content)[0]
+            )
     except Exception as err:
         logging.error(f"llm parsing failed: {err}")
         raise LLMFailedException()
@@ -202,7 +207,7 @@ def s3_file_handler(s3_url):
                 except LLMFailedException:
                     raise LLMFailedException()
                 except Exception as err:
-                    logging.error(f"failed to export bean: {err}")
+                    logging.error(f"failed to export bean {item.get('title')} from session {session_id}: {err}")
             except DownloadedPageNotFound:
                 pass
 
@@ -218,5 +223,5 @@ def lambda_handler(event, context):
 
 if __name__ == "__main__":
     s3_file_handler(
-        "s3://fugue-crawler-s3bucket-wfpbhlliaf63/parsed/v3/01K3GPR0RBDV7367GSV59PS8HR/2025-08-25T13-30-33.719437+00-00-00001.json.gz"
+        "s3://fugue-crawler-s3bucket-wfpbhlliaf63/parsed/v3/01K4A1JACM7KBBRQ4J7NCGN158/2025-09-04T09-40-35.839289+00-00-00001.json.gz"
     )

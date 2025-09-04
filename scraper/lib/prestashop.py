@@ -46,6 +46,7 @@ class PrestaShopScraper:
                 "title": data.get("name"),
                 "options": [],
                 "categories": [data.get("category_name")],
+                "content": b64(shrink_html(response.css("body").get())),
                 "variants": list(
                     [
                         a.get("name")

@@ -1,5 +1,5 @@
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 import gzip
 import json
 import logging
@@ -177,12 +177,15 @@ def create_bean(export_rule, parsed, s3Url, session_id):
 
     out = client.execute(req)
     created_id = out["adminCreateRoastedBean"]["id"]
+    expires_at = int((datetime.now(datetime.UTC) + timedelta(days=30)).timestamp())
     dynamodb.put_item(
         TableName=os.environ["STATE_DDB"],
         Item={
             "pk": {"S": parsed.get("product_url")},
             "createdAt": {"S": datetime.now().isoformat()},
+            "sessionId": {"S": session_id},
             "exportedId": {"S": created_id},
+            "ttl": {"N": str(expires_at)},
         },
     )
     logging.info(f"exported bean {parsed.get('title')} from session {session_id}")
@@ -228,5 +231,5 @@ def lambda_handler(event, context):
 
 if __name__ == "__main__":
     s3_file_handler(
-        "s3://fugue-crawler-s3bucket-wfpbhlliaf63/parsed/v3/01K4A6XHH6ZDQRW6BPFBEXPPQ0/2025-09-04T11-14-11.575826+00-00-00001.json.gz"
+        "s3://fugue-crawler-s3bucket-wfpbhlliaf63/parsed/v3/01K4AA8SY2F9922RJ50AXZH16F/2025-09-04T12-12-48.679772+00-00-00001.json.gz"
     )

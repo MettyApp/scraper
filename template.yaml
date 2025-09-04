@@ -170,6 +170,9 @@ Resources:
     Properties:
       TableName: exports-state
       BillingMode: PAY_PER_REQUEST
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: _ttl
       StreamSpecification:
         StreamViewType: NEW_IMAGE
       AttributeDefinitions:

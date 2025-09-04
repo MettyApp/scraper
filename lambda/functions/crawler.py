@@ -130,7 +130,7 @@ async def payload_handler(session_id, itercount, domains):
 
     settings.set(name="CLOSESPIDER_PAGECOUNT", value=500, priority="cmdline")
     settings.set(name="CLOSESPIDER_TIMEOUT", value=100, priority="cmdline")
-    settings.set("FEED_EXPORT_BATCH_ITEM_COUNT", value=300, priority="cmdline")
+    settings.set("FEED_EXPORT_BATCH_ITEM_COUNT", value=20, priority="cmdline")
     settings.set(
         name="FEEDS",
         value={
